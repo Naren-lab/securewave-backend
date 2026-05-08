@@ -12,6 +12,7 @@ const userRoutes = require("./routes/userRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const deviceRoutes = require("./routes/deviceRoutes");
 const protectionRoutes = require("./routes/protectionRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 connectDB();
 
@@ -26,6 +27,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/contacts", contactRoutes);
 app.use("/api/devices", deviceRoutes);
 app.use("/api/protection", protectionRoutes);
+app.use("/uploads", express.static("uploads"));
+app.use("/api/upload", uploadRoutes);
 
 const server = http.createServer(app);
 

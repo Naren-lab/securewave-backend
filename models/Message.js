@@ -13,15 +13,26 @@ const messageSchema = new mongoose.Schema(
     },
 
     message: {
-      type: String
+      type: String,
+      default: ""
     },
 
-    status: {
+    fileUrl: {
       type: String,
-      default: "sent"
+      default: ""
+    },
+
+    fileType: {
+      type: String,
+      default: ""
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-module.exports = mongoose.model("Message", messageSchema);
+module.exports = mongoose.model(
+  "Message",
+  messageSchema
+);
