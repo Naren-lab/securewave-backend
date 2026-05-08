@@ -6,7 +6,13 @@ const {
   getMessages
 } = require("../controllers/chatController");
 
+// Send message
 router.post("/send", sendMessage);
-router.get("/:senderId/:receiverId", getMessages);
+
+// Get old messages
+router.get(
+  "/messages/:senderId/:receiverId",
+  getMessages
+);
 
 module.exports = router;

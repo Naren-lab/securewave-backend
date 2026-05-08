@@ -1,7 +1,7 @@
 const Message = require("../models/Message");
 
 
-// Save Message
+// Send new message
 exports.sendMessage = async (req, res) => {
   try {
     const { sender, receiver, message } = req.body;
@@ -22,15 +22,21 @@ exports.sendMessage = async (req, res) => {
 };
 
 
-// Get Messages between two users
+// Get chat history between two users
 exports.getMessages = async (req, res) => {
   try {
     const { senderId, receiverId } = req.params;
 
     const messages = await Message.find({
       $or: [
-        { sender: senderId, receiver: receiverId },
-        { sender: receiverId, receiver: senderId }
+        {
+          sender: senderId,
+          receiver: receiverId
+        },
+        {
+          sender: receiverId,
+          receiver: senderId
+        }
       ]
     }).sort({ createdAt: 1 });
 
