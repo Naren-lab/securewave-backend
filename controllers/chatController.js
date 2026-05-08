@@ -4,13 +4,21 @@ const Message = require("../models/Message");
 // Send new message
 exports.sendMessage = async (req, res) => {
   try {
-    const { sender, receiver, message } = req.body;
+    const {
+  sender,
+  receiver,
+  message,
+  fileUrl,
+  fileType
+} = req.body;
 
     const newMessage = await Message.create({
-      sender,
-      receiver,
-      message
-    });
+  sender,
+  receiver,
+  message,
+  fileUrl,
+  fileType
+});
 
     res.status(201).json(newMessage);
 
