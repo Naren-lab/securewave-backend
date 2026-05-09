@@ -1,26 +1,31 @@
 const Contact = require("../models/Contact");
 
-const addContact = async (req, res) => {
+
+// Add new contact
+exports.addContact = async (req, res) => {
   try {
     const { userId, contactId } = req.body;
 
-    const existing = await Contact.findOne({
-      userId,
-      contactId
-    });
+    // Prevent duplicate contacts
+    const existingContact =
+      await Contact.findOne({
+        userId,
+        contactId
+      });
 
-    if (existing) {
-      return res.status(400).json({
+    if (existingContact) {
+      return res.json({
         message: "Contact already added"
       });
     }
 
-    const contact = await Contact.create({
-      userId,
-      contactId
-    });
+    const newContact =
+      await Contact.create({
+        userId,
+        contactId
+      });
 
-    res.status(201).json(contact);
+    res.status(201).json(newContact);
 
   } catch (error) {
     res.status(500).json({
@@ -29,4 +34,20 @@ const addContact = async (req, res) => {
   }
 };
 
-module.exports = { addContact };
+
+// Get all saved contacts
+exports.getContacts = async (req, res) => {
+  try {
+    const contacts =
+      await Contact.find({
+        userId: req.params.userId
+      }).populate("contactId");
+
+    res.status(200).json(contacts);
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
