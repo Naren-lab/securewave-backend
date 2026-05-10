@@ -36,23 +36,41 @@ app.use("/api/upload", uploadRoutes);
 // Create HTTP server
 const server = http.createServer(app);
 
-// Socket.io setup
+// Socket setup
 const io = new Server(server, {
   cors: {
     origin: "*",
   },
 });
 
+// Store active users
+const users = {};
+
 // Socket connection
 io.on("connection", (socket) => {
   console.log("User Connected:", socket.id);
 
-  // Send socket ID to frontend
+  // Send socket ID to frontend (for voice calls)
   socket.emit("me", socket.id);
 
-  /* ---------------- CHAT ---------------- */
+  /* ---------------- REGISTER USER ---------------- */
+  socket.on("registerUser", (userId) => {
+    users[userId] = socket.id;
+
+    console.log("Active Users:", users);
+  });
+
+  /* ---------------- PRIVATE CHAT ---------------- */
   socket.on("send_message", (data) => {
-    io.emit("receive_message", data);
+    const receiverSocketId =
+      users[data.receiver];
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit(
+        "receive_message",
+        data
+      );
+    }
   });
 
   /* ---------------- VOICE CALL ---------------- */
@@ -73,11 +91,23 @@ io.on("connection", (socket) => {
     );
   });
 
-  // Disconnect
+  /* ---------------- DISCONNECT ---------------- */
   socket.on("disconnect", () => {
     console.log(
       "User Disconnected:",
       socket.id
+    );
+
+    // Remove disconnected user
+    for (let userId in users) {
+      if (users[userId] === socket.id) {
+        delete users[userId];
+      }
+    }
+
+    console.log(
+      "Updated Active Users:",
+      users
     );
   });
 });
