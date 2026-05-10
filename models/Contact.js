@@ -1,18 +1,44 @@
-const mongoose = require("mongoose");
+const mongoose =
+  require("mongoose");
 
-const contactSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
+const contactSchema =
+  new mongoose.Schema(
+    {
+      userId: {
+        type:
+          mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+
+      contactId: {
+        type:
+          mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
     },
-
-    contactId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
+    {
+      timestamps: true,
     }
+  );
+
+/*
+ Prevent duplicate contacts:
+ Same user cannot add same contact twice
+*/
+contactSchema.index(
+  {
+    userId: 1,
+    contactId: 1,
   },
-  { timestamps: true }
+  {
+    unique: true,
+  }
 );
 
-module.exports = mongoose.model("Contact", contactSchema);
+module.exports =
+  mongoose.model(
+    "Contact",
+    contactSchema
+  );
