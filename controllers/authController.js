@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 
 /* -----------------------------------
    REGISTER USER
-   Registration device becomes MAIN DEVICE
+   Registration device becomes MAIN
 ----------------------------------- */
 exports.registerUser = async (
   req,
@@ -38,7 +38,7 @@ exports.registerUser = async (
         10
       );
 
-    // Create User
+    // Create user
     const user =
       await User.create({
         name,
@@ -56,7 +56,7 @@ exports.registerUser = async (
           )
       });
 
-    // Create Main Device automatically
+    // Registration device = MAIN DEVICE
     await Device.create({
       userId: user._id,
       deviceName:
@@ -92,7 +92,6 @@ exports.registerUser = async (
 
 /* -----------------------------------
    LOGIN USER
-   New device must be linked first
 ----------------------------------- */
 exports.loginUser = async (
   req,
@@ -129,24 +128,27 @@ exports.loginUser = async (
       });
     }
 
-    const currentDevice =
+    const currentDeviceName =
       req.headers[
         "user-agent"
       ] ||
       "Unknown Device";
 
-    // Check if device already exists
+    //-----------------------------------
+    // Check existing device
+    //-----------------------------------
     const existingDevice =
       await Device.findOne({
         userId: user._id,
         deviceName:
-          currentDevice,
-        status: "active"
+          currentDeviceName
       });
 
-    // If device not approved
+    //-----------------------------------
+    // No device found → redirect to link
+    //-----------------------------------
     if (!existingDevice) {
-      return res.status(403).json({
+      return res.status(200).json({
         message:
           "New device detected. Please link this device first.",
         redirect:
@@ -155,6 +157,38 @@ exports.loginUser = async (
       });
     }
 
+    //-----------------------------------
+    // Device pending approval
+    //-----------------------------------
+    if (
+      existingDevice.status ===
+      "pending"
+    ) {
+      return res.status(200).json({
+        message:
+          "Your device request is waiting for approval from main device.",
+        redirect:
+          "/private-space/link",
+        user
+      });
+    }
+
+    //-----------------------------------
+    // Device logged out
+    //-----------------------------------
+    if (
+      existingDevice.status ===
+      "logged_out"
+    ) {
+      return res.status(403).json({
+        message:
+          "This device was logged out by main device."
+      });
+    }
+
+    //-----------------------------------
+    // Device approved → login allowed
+    //-----------------------------------
     const token =
       jwt.sign(
         {
