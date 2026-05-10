@@ -1,4 +1,6 @@
 const Device = require("../models/Device");
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
 
 
 /* -----------------------------------
@@ -6,8 +8,7 @@ const Device = require("../models/Device");
 ----------------------------------- */
 const registerMainDevice = async (req, res) => {
   try {
-    const { userId, deviceName, deviceType } =
-      req.body;
+    const { userId, deviceName, deviceType } = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -15,36 +16,32 @@ const registerMainDevice = async (req, res) => {
       });
     }
 
-    const existingMain =
-      await Device.findOne({
-        userId,
-        isMainDevice: true
-      });
+    const existingMain = await Device.findOne({
+      userId,
+      isMainDevice: true
+    });
 
     if (existingMain) {
       return res.status(200).json({
-        message:
-          "Main device already exists",
+        message: "Main device already exists",
         device: existingMain
       });
     }
 
-    const device =
-      await Device.create({
-        userId,
-        deviceName,
-        deviceType,
-        isPrimary: true,
-        isMainDevice: true,
-        isApproved: true,
-        hasPrivateAccess: true,
-        status: "active",
-        sessionExpiresAt: null
-      });
+    const device = await Device.create({
+      userId,
+      deviceName,
+      deviceType,
+      isPrimary: true,
+      isMainDevice: true,
+      isApproved: true,
+      hasPrivateAccess: true,
+      status: "active",
+      sessionExpiresAt: null
+    });
 
     res.status(201).json({
-      message:
-        "Main device registered successfully",
+      message: "Main device registered successfully",
       device
     });
 
@@ -57,15 +54,11 @@ const registerMainDevice = async (req, res) => {
 
 
 /* -----------------------------------
-   Request Link New Device
+   Link New Device
 ----------------------------------- */
 const linkDevice = async (req, res) => {
   try {
-    const {
-      userId,
-      deviceName,
-      deviceType
-    } = req.body;
+    const { userId, deviceName, deviceType } = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -73,58 +66,46 @@ const linkDevice = async (req, res) => {
       });
     }
 
-    // Check if already pending
-    const existingPending =
-      await Device.findOne({
-        userId,
-        deviceName,
-        status: "pending"
-      });
+    const existingPending = await Device.findOne({
+      userId,
+      deviceName,
+      status: "pending"
+    });
 
     if (existingPending) {
       return res.status(400).json({
-        message:
-          "Device request already pending"
+        message: "Device request already pending"
       });
     }
 
-    // Check if already active
-    const existingActive =
-      await Device.findOne({
-        userId,
-        deviceName,
-        status: "active"
-      });
+    const existingActive = await Device.findOne({
+      userId,
+      deviceName,
+      status: "active"
+    });
 
     if (existingActive) {
       return res.status(400).json({
-        message:
-          "Device already linked"
+        message: "Device already linked"
       });
     }
 
-    const device =
-      await Device.create({
-        userId,
-        deviceName,
-        deviceType,
-        isPrimary: false,
-        isMainDevice: false,
-        isApproved: false,
-        hasPrivateAccess: false,
-        sessionExpiresAt:
-          new Date(
-            Date.now() +
-              10 *
-                60 *
-                1000
-          ),
-        status: "pending"
-      });
+    const device = await Device.create({
+      userId,
+      deviceName,
+      deviceType,
+      isPrimary: false,
+      isMainDevice: false,
+      isApproved: false,
+      hasPrivateAccess: false,
+      sessionExpiresAt: new Date(
+        Date.now() + 10 * 60 * 1000
+      ),
+      status: "pending"
+    });
 
     res.status(201).json({
-      message:
-        "Device request sent successfully",
+      message: "Device request sent successfully",
       device
     });
 
@@ -141,27 +122,13 @@ const linkDevice = async (req, res) => {
 ----------------------------------- */
 const approveDevice = async (req, res) => {
   try {
-    const { deviceId } =
-      req.params;
+    const { deviceId } = req.params;
 
-    const device =
-      await Device.findById(
-        deviceId
-      );
+    const device = await Device.findById(deviceId);
 
     if (!device) {
       return res.status(404).json({
-        message:
-          "Device not found"
-      });
-    }
-
-    if (
-      device.status === "active"
-    ) {
-      return res.status(400).json({
-        message:
-          "Device already approved"
+        message: "Device not found"
       });
     }
 
@@ -171,8 +138,7 @@ const approveDevice = async (req, res) => {
     await device.save();
 
     res.json({
-      message:
-        "Device approved successfully",
+      message: "Device approved successfully",
       device
     });
 
@@ -187,92 +153,69 @@ const approveDevice = async (req, res) => {
 /* -----------------------------------
    Grant Private Access
 ----------------------------------- */
-const grantPrivateAccess =
-  async (req, res) => {
-    try {
-      const { deviceId } =
-        req.params;
+const grantPrivateAccess = async (req, res) => {
+  try {
+    const device = await Device.findById(
+      req.params.deviceId
+    );
 
-      const device =
-        await Device.findById(
-          deviceId
-        );
-
-      if (!device) {
-        return res.status(404).json({
-          message:
-            "Device not found"
-        });
-      }
-
-      device.hasPrivateAccess =
-        true;
-
-      device.sessionExpiresAt =
-        null;
-
-      await device.save();
-
-      res.json({
-        message:
-          "Private access granted",
-        device
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        message: error.message
+    if (!device) {
+      return res.status(404).json({
+        message: "Device not found"
       });
     }
-  };
+
+    device.hasPrivateAccess = true;
+    device.sessionExpiresAt = null;
+
+    await device.save();
+
+    res.json({
+      message: "Private access granted",
+      device
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
 
 
 /* -----------------------------------
    Remove Private Access
 ----------------------------------- */
-const removePrivateAccess =
-  async (req, res) => {
-    try {
-      const { deviceId } =
-        req.params;
+const removePrivateAccess = async (req, res) => {
+  try {
+    const device = await Device.findById(
+      req.params.deviceId
+    );
 
-      const device =
-        await Device.findById(
-          deviceId
-        );
-
-      if (!device) {
-        return res.status(404).json({
-          message:
-            "Device not found"
-        });
-      }
-
-      device.hasPrivateAccess =
-        false;
-
-      device.sessionExpiresAt =
-        new Date(
-          Date.now() +
-            10 *
-              60 *
-              1000
-        );
-
-      await device.save();
-
-      res.json({
-        message:
-          "Private access removed",
-        device
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        message: error.message
+    if (!device) {
+      return res.status(404).json({
+        message: "Device not found"
       });
     }
-  };
+
+    device.hasPrivateAccess = false;
+    device.sessionExpiresAt = new Date(
+      Date.now() + 10 * 60 * 1000
+    );
+
+    await device.save();
+
+    res.json({
+      message: "Private access removed",
+      device
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
 
 
 /* -----------------------------------
@@ -280,11 +223,9 @@ const removePrivateAccess =
 ----------------------------------- */
 const getDevices = async (req, res) => {
   try {
-    const devices =
-      await Device.find({
-        userId:
-          req.params.userId
-      });
+    const devices = await Device.find({
+      userId: req.params.userId
+    });
 
     res.json(devices);
 
@@ -301,24 +242,19 @@ const getDevices = async (req, res) => {
 ----------------------------------- */
 const removeDevice = async (req, res) => {
   try {
-    const device =
-      await Device.findById(
-        req.params.deviceId
-      );
+    const device = await Device.findById(
+      req.params.deviceId
+    );
 
     if (!device) {
       return res.status(404).json({
-        message:
-          "Device not found"
+        message: "Device not found"
       });
     }
 
-    if (
-      device.isMainDevice
-    ) {
+    if (device.isMainDevice) {
       return res.status(400).json({
-        message:
-          "Main device cannot be removed"
+        message: "Main device cannot be removed"
       });
     }
 
@@ -327,8 +263,7 @@ const removeDevice = async (req, res) => {
     );
 
     res.json({
-      message:
-        "Device removed successfully"
+      message: "Device removed successfully"
     });
 
   } catch (error) {
@@ -340,40 +275,110 @@ const removeDevice = async (req, res) => {
 
 
 /* -----------------------------------
-   Force Logout Device
+   Force Logout
 ----------------------------------- */
-const forceLogoutDevice =
-  async (req, res) => {
-    try {
-      const device =
-        await Device.findById(
-          req.params.deviceId
-        );
+const forceLogoutDevice = async (req, res) => {
+  try {
+    const device = await Device.findById(
+      req.params.deviceId
+    );
 
-      if (!device) {
-        return res.status(404).json({
-          message:
-            "Device not found"
-        });
-      }
-
-      device.status =
-        "logged_out";
-
-      await device.save();
-
-      res.json({
-        message:
-          "Device logged out successfully",
-        device
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        message: error.message
+    if (!device) {
+      return res.status(404).json({
+        message: "Device not found"
       });
     }
-  };
+
+    device.status = "logged_out";
+
+    await device.save();
+
+    res.json({
+      message: "Device logged out successfully",
+      device
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
+
+
+/* -----------------------------------
+   Make New Device Main
+----------------------------------- */
+const makeDeviceMain = async (req, res) => {
+  try {
+    const {
+      userId,
+      deviceId,
+      password,
+      otp
+    } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Incorrect password"
+      });
+    }
+
+    // Demo OTP
+    if (otp !== "123456") {
+      return res.status(400).json({
+        message: "Invalid OTP"
+      });
+    }
+
+    // Remove old main device
+    await Device.updateMany(
+      {
+        userId,
+        isMainDevice: true
+      },
+      {
+        isMainDevice: false
+      }
+    );
+
+    // Make new device main
+    const newMainDevice =
+      await Device.findByIdAndUpdate(
+        deviceId,
+        {
+          isMainDevice: true,
+          isPrimary: true,
+          hasPrivateAccess: true,
+          status: "active"
+        },
+        { new: true }
+      );
+
+    res.json({
+      message: "New device is now main device",
+      device: newMainDevice
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message
+    });
+  }
+};
 
 
 module.exports = {
@@ -384,5 +389,6 @@ module.exports = {
   removePrivateAccess,
   getDevices,
   removeDevice,
-  forceLogoutDevice
+  forceLogoutDevice,
+  makeDeviceMain
 };

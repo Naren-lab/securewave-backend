@@ -1,76 +1,184 @@
 const User = require("../models/User");
+const Device = require("../models/Device");
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 
-// Register
-exports.registerUser = async (req, res) => {
+/* -----------------------------------
+   REGISTER USER
+   Registration device becomes MAIN DEVICE
+----------------------------------- */
+exports.registerUser = async (
+  req,
+  res
+) => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      name,
+      email,
+      password
+    } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser =
+      await User.findOne({
+        email
+      });
 
     if (existingUser) {
       return res.status(400).json({
-        message: "User already exists"
+        message:
+          "User already exists"
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword =
+      await bcrypt.hash(
+        password,
+        10
+      );
 
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      uniqueUserId: "SW" + Date.now(),
-      passKey: "PK" + Math.floor(Math.random() * 10000)
+    // Create User
+    const user =
+      await User.create({
+        name,
+        email,
+        password:
+          hashedPassword,
+        uniqueUserId:
+          "SW" +
+          Date.now(),
+        passKey:
+          "PK" +
+          Math.floor(
+            Math.random() *
+              10000
+          )
+      });
+
+    // Create Main Device automatically
+    await Device.create({
+      userId: user._id,
+      deviceName:
+        req.headers[
+          "user-agent"
+        ] ||
+        "Unknown Device",
+      deviceType:
+        "Browser",
+      isPrimary: true,
+      isMainDevice: true,
+      isApproved: true,
+      hasPrivateAccess: true,
+      status: "active",
+      sessionExpiresAt:
+        null
     });
 
     res.status(201).json({
-      message: "User registered successfully",
+      message:
+        "User registered successfully. This device is now your MAIN device.",
       user
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        error.message
+    });
   }
 };
 
 
-// Login
-exports.loginUser = async (req, res) => {
+/* -----------------------------------
+   LOGIN USER
+   New device must be linked first
+----------------------------------- */
+exports.loginUser = async (
+  req,
+  res
+) => {
   try {
-    const { email, password } = req.body;
+    const {
+      email,
+      password
+    } = req.body;
 
-    const user = await User.findOne({ email });
+    const user =
+      await User.findOne({
+        email
+      });
 
     if (!user) {
       return res.status(400).json({
-        message: "User not found"
+        message:
+          "User not found"
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!isMatch) {
       return res.status(400).json({
-        message: "Invalid credentials"
+        message:
+          "Invalid credentials"
       });
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const currentDevice =
+      req.headers[
+        "user-agent"
+      ] ||
+      "Unknown Device";
+
+    // Check if device already exists
+    const existingDevice =
+      await Device.findOne({
+        userId: user._id,
+        deviceName:
+          currentDevice,
+        status: "active"
+      });
+
+    // If device not approved
+    if (!existingDevice) {
+      return res.status(403).json({
+        message:
+          "New device detected. Please link this device first.",
+        redirect:
+          "/private-space/link",
+        user
+      });
+    }
+
+    const token =
+      jwt.sign(
+        {
+          id: user._id
+        },
+        process.env
+          .JWT_SECRET,
+        {
+          expiresIn:
+            "7d"
+        }
+      );
 
     res.status(200).json({
-      message: "Login successful",
+      message:
+        "Login successful",
       token,
       user
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        error.message
+    });
   }
 };
