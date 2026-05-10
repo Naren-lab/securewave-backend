@@ -1,0 +1,59 @@
+const express = require("express");
+const router = express.Router();
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// Create uploads folder if missing
+const uploadPath = "uploads/";
+
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, {
+    recursive: true,
+  });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPath);
+  },
+
+  filename: function (req, file, cb) {
+    cb(
+      null,
+      Date.now() +
+        path.extname(file.originalname)
+    );
+  },
+});
+
+const upload = multer({ storage });
+
+router.post(
+  "/",
+  upload.single("file"),
+  (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+        });
+      }
+
+      console.log(req.file);
+
+      res.status(200).json({
+        fileUrl: `/uploads/${req.file.filename}`,
+        fileType: req.file.mimetype,
+      });
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: error.message,
+      });
+    }
+  }
+);
+
+module.exports = router;
