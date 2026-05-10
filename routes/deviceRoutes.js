@@ -5,12 +5,36 @@ const {
   linkDevice,
   getDevices,
   removeDevice,
-  forceLogoutDevice
+  forceLogoutDevice,
+  approveDevice,
+  grantPrivateAccess,
+  removePrivateAccess
 } = require("../controllers/deviceController");
 
 router.post("/link", linkDevice);
+
 router.get("/:userId", getDevices);
-router.delete("/:deviceId", removeDevice);
-router.put("/logout/:deviceId", forceLogoutDevice);
+
+router.put("/approve/:deviceId", approveDevice);
+
+router.put(
+  "/private-access/:deviceId",
+  grantPrivateAccess
+);
+
+router.put(
+  "/remove-private/:deviceId",
+  removePrivateAccess
+);
+
+router.put(
+  "/logout/:deviceId",
+  forceLogoutDevice
+);
+
+router.delete(
+  "/:deviceId",
+  removeDevice
+);
 
 module.exports = router;
