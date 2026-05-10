@@ -33,126 +33,169 @@ app.use("/api/protection", protectionRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/upload", uploadRoutes);
 
-// Create server
-const server =
-  http.createServer(app);
+/* ---------------- CREATE SERVER ---------------- */
+const server = http.createServer(app);
 
-/* ---------------- SOCKET.IO ---------------- */
-const io = new Server(
-  server,
-  {
-    cors: {
-      origin: "*"
+/* ---------------- SOCKET ---------------- */
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
+
+/* Store active users */
+let activeUsers = {};
+
+io.on("connection", (socket) => {
+  console.log(
+    "User Connected:",
+    socket.id
+  );
+
+  // Send socket ID to frontend
+  socket.emit(
+    "me",
+    socket.id
+  );
+
+  /* ---------------- JOIN USER ---------------- */
+  socket.on(
+    "join_user",
+    (userId) => {
+      activeUsers[userId] =
+        socket.id;
+
+      socket.join(userId);
+
+      console.log(
+        `User ${userId} joined with socket ${socket.id}`
+      );
     }
-  }
-);
+  );
 
-io.on(
-  "connection",
-  (socket) => {
-    console.log(
-      "User Connected:",
-      socket.id
-    );
+  /* ---------------- CHAT ---------------- */
+  socket.on(
+    "send_message",
+    (data) => {
+      console.log(
+        "Message Sent:",
+        data
+      );
 
-    // Send socket ID for voice calls
-    socket.emit(
-      "me",
-      socket.id
-    );
+      // sender devices
+      io.to(
+        data.senderId
+      ).emit(
+        "receive_message",
+        data
+      );
 
-    /* ---------------- JOIN USER ROOM ---------------- */
-    socket.on(
-      "join_user",
-      (userId) => {
-        socket.join(
-          userId
-        );
+      // receiver devices
+      io.to(
+        data.receiverId
+      ).emit(
+        "receive_message",
+        data
+      );
+    }
+  );
 
-        console.log(
-          `User ${userId} joined room`
-        );
-      }
-    );
+  /* ---------------- VOICE CALL ---------------- */
 
-    /* ---------------- CHAT ---------------- */
-    socket.on(
-      "send_message",
-      (data) => {
-        console.log(
-          "Message Sent:",
-          data
-        );
+  // Call user
+  socket.on(
+    "callUser",
+    (data) => {
+      console.log(
+        "Calling user:",
+        data.userToCall
+      );
 
-        /*
-          Send message to:
-          1. Sender's all devices
-          2. Receiver's all devices
-        */
+      io.to(
+        data.userToCall
+      ).emit(
+        "callUser",
+        {
+          signal:
+            data.signalData,
+          from:
+            data.from,
+        }
+      );
+    }
+  );
 
-        io.to(
-          data.senderId
-        ).emit(
-          "receive_message",
-          data
-        );
+  // Answer call
+  socket.on(
+    "answerCall",
+    (data) => {
+      console.log(
+        "Call answered"
+      );
 
-        io.to(
-          data.receiverId
-        ).emit(
-          "receive_message",
-          data
-        );
-      }
-    );
+      io.to(
+        data.to
+      ).emit(
+        "callAccepted",
+        data.signal
+      );
+    }
+  );
 
-    /* ---------------- VOICE CALL ---------------- */
+  /* ---------------- VIDEO CALL ---------------- */
+  socket.on(
+    "videoCallUser",
+    (data) => {
+      io.to(
+        data.userToCall
+      ).emit(
+        "videoCallUser",
+        {
+          signal:
+            data.signalData,
+          from:
+            data.from,
+        }
+      );
+    }
+  );
 
-    // Call another user
-    socket.on(
-      "callUser",
-      (data) => {
-        io.to(
-          data.userToCall
-        ).emit(
-          "callUser",
-          {
-            signal:
-              data.signalData,
-            from:
-              data.from
-          }
-        );
-      }
-    );
+  socket.on(
+    "answerVideoCall",
+    (data) => {
+      io.to(
+        data.to
+      ).emit(
+        "videoCallAccepted",
+        data.signal
+      );
+    }
+  );
 
-    // Answer call
-    socket.on(
-      "answerCall",
-      (data) => {
-        io.to(
-          data.to
-        ).emit(
-          "callAccepted",
-          data.signal
-        );
-      }
-    );
+  /* ---------------- DISCONNECT ---------------- */
+  socket.on(
+    "disconnect",
+    () => {
+      console.log(
+        "User Disconnected:",
+        socket.id
+      );
 
-    /* ---------------- DISCONNECT ---------------- */
-    socket.on(
-      "disconnect",
-      () => {
-        console.log(
-          "User Disconnected:",
+      for (let userId in activeUsers) {
+        if (
+          activeUsers[userId] ===
           socket.id
-        );
+        ) {
+          delete activeUsers[
+            userId
+          ];
+        }
       }
-    );
-  }
-);
+    }
+  );
+});
 
-/* ---------------- SERVER START ---------------- */
+/* ---------------- START SERVER ---------------- */
 server.listen(
   5000,
   () => {
