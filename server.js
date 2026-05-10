@@ -15,7 +15,7 @@ const deviceRoutes = require("./routes/deviceRoutes");
 const protectionRoutes = require("./routes/protectionRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 
-// Connect MongoDB
+/* ---------------- CONNECT DB ---------------- */
 connectDB();
 
 const app = express();
@@ -43,131 +43,157 @@ const io = new Server(server, {
   },
 });
 
-/* Store active users */
+/*
+Store active users like:
+{
+  userId: {
+    socketId: "...",
+    username: "Narendra"
+  }
+}
+*/
 let activeUsers = {};
 
 io.on("connection", (socket) => {
-  console.log(
-    "User Connected:",
-    socket.id
-  );
+  console.log("User Connected:", socket.id);
 
-  // Send socket ID to frontend
-  socket.emit(
-    "me",
-    socket.id
-  );
+  // Send socket id to frontend
+  socket.emit("me", socket.id);
 
   /* ---------------- JOIN USER ---------------- */
-  socket.on(
-    "join_user",
-    (userId) => {
-      activeUsers[userId] =
-        socket.id;
+  socket.on("join_user", (data) => {
+    const { userId, username } = data;
 
-      socket.join(userId);
+    activeUsers[userId] = {
+      socketId: socket.id,
+      username: username,
+    };
 
-      console.log(
-        `User ${userId} joined with socket ${socket.id}`
-      );
-    }
-  );
+    socket.join(userId);
+
+    console.log(
+      `${username} joined with socket ${socket.id}`
+    );
+  });
 
   /* ---------------- CHAT ---------------- */
-  socket.on(
-    "send_message",
-    (data) => {
-      console.log(
-        "Message Sent:",
-        data
-      );
+  socket.on("send_message", (data) => {
+    console.log("Message Sent:", data);
 
-      // sender devices
-      io.to(
-        data.senderId
-      ).emit(
-        "receive_message",
-        data
-      );
+    // sender devices
+    io.to(data.senderId).emit(
+      "receive_message",
+      data
+    );
 
-      // receiver devices
-      io.to(
-        data.receiverId
-      ).emit(
-        "receive_message",
-        data
-      );
-    }
-  );
+    // receiver devices
+    io.to(data.receiverId).emit(
+      "receive_message",
+      data
+    );
+  });
 
   /* ---------------- VOICE CALL ---------------- */
+  socket.on("callUser", (data) => {
+    const {
+      usernameToCall,
+      signalData,
+      from,
+    } = data;
 
-  // Call user
-  socket.on(
-    "callUser",
-    (data) => {
-      console.log(
-        "Calling user:",
-        data.userToCall
-      );
+    let receiverSocket = null;
 
-      io.to(
-        data.userToCall
-      ).emit(
+    for (let userId in activeUsers) {
+      if (
+        activeUsers[userId].username ===
+        usernameToCall
+      ) {
+        receiverSocket =
+          activeUsers[userId].socketId;
+        break;
+      }
+    }
+
+    if (receiverSocket) {
+      io.to(receiverSocket).emit(
         "callUser",
         {
-          signal:
-            data.signalData,
-          from:
-            data.from,
+          signal: signalData,
+          from,
         }
       );
-    }
-  );
 
-  // Answer call
-  socket.on(
-    "answerCall",
-    (data) => {
       console.log(
-        "Call answered"
+        `Calling ${usernameToCall}`
       );
-
-      io.to(
-        data.to
-      ).emit(
-        "callAccepted",
-        data.signal
+    } else {
+      console.log(
+        "User not online"
       );
     }
-  );
+  });
+
+  /* ---------------- ANSWER VOICE CALL ---------------- */
+  socket.on("answerCall", (data) => {
+    io.to(data.to).emit(
+      "callAccepted",
+      data.signal
+    );
+
+    console.log("Voice call answered");
+  });
 
   /* ---------------- VIDEO CALL ---------------- */
-  socket.on(
-    "videoCallUser",
-    (data) => {
-      io.to(
-        data.userToCall
-      ).emit(
+  socket.on("videoCallUser", (data) => {
+    const {
+      usernameToCall,
+      signalData,
+      from,
+    } = data;
+
+    let receiverSocket = null;
+
+    for (let userId in activeUsers) {
+      if (
+        activeUsers[userId].username ===
+        usernameToCall
+      ) {
+        receiverSocket =
+          activeUsers[userId].socketId;
+        break;
+      }
+    }
+
+    if (receiverSocket) {
+      io.to(receiverSocket).emit(
         "videoCallUser",
         {
-          signal:
-            data.signalData,
-          from:
-            data.from,
+          signal: signalData,
+          from,
         }
       );
-    }
-  );
 
+      console.log(
+        `Video calling ${usernameToCall}`
+      );
+    } else {
+      console.log(
+        "User not online for video call"
+      );
+    }
+  });
+
+  /* ---------------- ANSWER VIDEO CALL ---------------- */
   socket.on(
     "answerVideoCall",
     (data) => {
-      io.to(
-        data.to
-      ).emit(
+      io.to(data.to).emit(
         "videoCallAccepted",
         data.signal
+      );
+
+      console.log(
+        "Video call answered"
       );
     }
   );
@@ -183,12 +209,10 @@ io.on("connection", (socket) => {
 
       for (let userId in activeUsers) {
         if (
-          activeUsers[userId] ===
-          socket.id
+          activeUsers[userId]
+            .socketId === socket.id
         ) {
-          delete activeUsers[
-            userId
-          ];
+          delete activeUsers[userId];
         }
       }
     }
@@ -196,11 +220,8 @@ io.on("connection", (socket) => {
 });
 
 /* ---------------- START SERVER ---------------- */
-server.listen(
-  5000,
-  () => {
-    console.log(
-      "Server running on port 5000"
-    );
-  }
-);
+server.listen(5000, () => {
+  console.log(
+    "Server running on port 5000"
+  );
+});
