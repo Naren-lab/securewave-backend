@@ -5,32 +5,16 @@ const path = require("path");
 
 // ---------------- STORAGE ----------------
 const storage = multer.diskStorage({
-  destination: function (
-    req,
-    file,
-    cb
-  ) {
-    cb(
-      null,
-      "uploads/"
-    );
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
   },
 
-  filename: function (
-    req,
-    file,
-    cb
-  ) {
+  filename: function (req, file, cb) {
     const uniqueName =
       Date.now() +
-      path.extname(
-        file.originalname
-      );
+      path.extname(file.originalname);
 
-    cb(
-      null,
-      uniqueName
-    );
+    cb(null, uniqueName);
   },
 });
 
@@ -45,15 +29,10 @@ router.post(
   upload.single("file"),
   (req, res) => {
     try {
-      if (
-        !req.file
-      ) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "No file uploaded",
-          });
+      if (!req.file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+        });
       }
 
       console.log(
@@ -61,42 +40,31 @@ router.post(
         req.file
       );
 
-      // Detect file type
-      let fileType =
-        "document";
+      // Detect file type properly
+      let fileType = "document";
 
       if (
         req.file.mimetype.startsWith(
           "image"
         )
       ) {
-        fileType =
-          "image";
+        fileType = "image";
       }
 
-      res
-        .status(200)
-        .json({
-          fileUrl: `/uploads/${req.file.filename}`,
-          fileType:
-            fileType,
-        });
-    } catch (
-      error
-    ) {
-      console.log(
-        error
-      );
+      // Send response
+      res.status(200).json({
+        fileUrl: `/uploads/${req.file.filename}`,
+        fileType: fileType,
+      });
 
-      res
-        .status(500)
-        .json({
-          message:
-            error.message,
-        });
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: error.message,
+      });
     }
   }
 );
 
-module.exports =
-  router;
+module.exports = router;
