@@ -3,52 +3,100 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 
-// Storage configuration
+// ---------------- STORAGE ----------------
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
+  destination: function (
+    req,
+    file,
+    cb
+  ) {
+    cb(
+      null,
+      "uploads/"
+    );
   },
 
-  filename: function (req, file, cb) {
+  filename: function (
+    req,
+    file,
+    cb
+  ) {
     const uniqueName =
-      Date.now() + path.extname(file.originalname);
+      Date.now() +
+      path.extname(
+        file.originalname
+      );
 
-    cb(null, uniqueName);
-  }
+    cb(
+      null,
+      uniqueName
+    );
+  },
 });
 
-// Multer upload setup
+// ---------------- MULTER ----------------
 const upload = multer({
-  storage: storage
+  storage: storage,
 });
 
-// Upload route
+// ---------------- UPLOAD ROUTE ----------------
 router.post(
   "/",
   upload.single("file"),
   (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({
-          message: "No file uploaded"
-        });
+      if (
+        !req.file
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "No file uploaded",
+          });
       }
 
-      console.log("Uploaded File:", req.file);
+      console.log(
+        "Uploaded File:",
+        req.file
+      );
 
-      res.status(200).json({
-        fileUrl: `/uploads/${req.file.filename}`,
-        fileType: req.file.mimetype
-      });
+      // Detect file type
+      let fileType =
+        "document";
 
-    } catch (error) {
-      console.log(error);
+      if (
+        req.file.mimetype.startsWith(
+          "image"
+        )
+      ) {
+        fileType =
+          "image";
+      }
 
-      res.status(500).json({
-        message: error.message
-      });
+      res
+        .status(200)
+        .json({
+          fileUrl: `/uploads/${req.file.filename}`,
+          fileType:
+            fileType,
+        });
+    } catch (
+      error
+    ) {
+      console.log(
+        error
+      );
+
+      res
+        .status(500)
+        .json({
+          message:
+            error.message,
+        });
     }
   }
 );
 
-module.exports = router;
+module.exports =
+  router;
